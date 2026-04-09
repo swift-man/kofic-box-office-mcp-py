@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kofic-box-office-mcp"
 version = "0.1.0"
-description = "MCP server for the KOFIC box-office OpenAPI"
+description = "MCP server for KOFIC box-office and ARKO event OpenAPIs"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

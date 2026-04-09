@@ -3,19 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Mapping, Optional, Protocol
 
-from .constants import (
-    BOX_OFFICE_ENDPOINT,
-    BOX_OFFICE_SEARCH_FIELDS,
-    BOX_OFFICE_SORT_FIELDS,
-    BOX_OFFICE_SORT_ORDERS,
-    BOX_OFFICE_SUMMARY_FIELDS,
-    DEFAULT_NUM_OF_ROWS,
-    DEFAULT_PAGE_NO,
-    DEFAULT_SEARCH_LIMIT,
-    DEFAULT_TITLE_LIST_LIMIT,
+from .arko_event_constants import (
+    ARKO_EVENT_ENDPOINT,
+    ARKO_EVENT_SEARCH_FIELDS,
+    ARKO_EVENT_SORT_FIELDS,
+    ARKO_EVENT_SUMMARY_FIELDS,
+    DEFAULT_ARKO_EVENT_LIST_LIMIT,
+    DEFAULT_ARKO_EVENT_SEARCH_LIMIT,
 )
-from .exceptions import KoficBoxOfficeError
-from .gateway import KoficBoxOfficeGateway
+from .constants import BOX_OFFICE_SORT_ORDERS, DEFAULT_NUM_OF_ROWS, DEFAULT_PAGE_NO
+from .arko_event_gateway import ArkoEventGateway
+from .exceptions import ArkoEventError
 from .validation import (
     normalize_optional_text,
     require_text,
@@ -26,10 +24,10 @@ from .validation import (
 
 
 @dataclass(frozen=True)
-class BoxOfficeQueryOptions:
+class ArkoEventQueryOptions:
     query: Optional[str] = None
     creator: Optional[str] = None
-    collection_db: Optional[str] = None
+    spatial: Optional[str] = None
     subject_keyword: Optional[str] = None
     limit: Optional[int] = None
     sort_by: Optional[str] = None
@@ -41,20 +39,20 @@ class BoxOfficeQueryOptions:
         *,
         query: Optional[str] = None,
         creator: Optional[str] = None,
-        collection_db: Optional[str] = None,
+        spatial: Optional[str] = None,
         subject_keyword: Optional[str] = None,
         limit: Optional[int] = None,
         sort_by: Optional[str] = None,
         sort_order: Optional[str] = None,
-    ) -> "BoxOfficeQueryOptions":
+    ) -> "ArkoEventQueryOptions":
         normalized_sort_by = normalize_optional_text(sort_by)
         normalized_sort_order = normalize_optional_text(sort_order)
 
         if normalized_sort_order and not normalized_sort_by:
-            raise KoficBoxOfficeError("sort_order can only be used when sort_by is also provided.")
+            raise ArkoEventError("sort_order can only be used when sort_by is also provided.")
 
         if normalized_sort_by:
-            validate_choice("sort_by", normalized_sort_by, BOX_OFFICE_SORT_FIELDS)
+            validate_choice("sort_by", normalized_sort_by, ARKO_EVENT_SORT_FIELDS)
             normalized_sort_order = normalized_sort_order or "asc"
 
         if normalized_sort_order:
@@ -63,7 +61,7 @@ class BoxOfficeQueryOptions:
         return cls(
             query=normalize_optional_text(query),
             creator=normalize_optional_text(creator),
-            collection_db=normalize_optional_text(collection_db),
+            spatial=normalize_optional_text(spatial),
             subject_keyword=normalize_optional_text(subject_keyword),
             limit=validate_optional_positive_int("limit", limit),
             sort_by=normalized_sort_by,
@@ -71,14 +69,14 @@ class BoxOfficeQueryOptions:
         )
 
 
-class KoficBoxOfficeServiceProtocol(Protocol):
-    def get_kofic_box_office(
+class ArkoEventServiceProtocol(Protocol):
+    def get_arko_events(
         self,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
         query: Optional[str] = None,
         creator: Optional[str] = None,
-        collection_db: Optional[str] = None,
+        spatial: Optional[str] = None,
         subject_keyword: Optional[str] = None,
         limit: Optional[int] = None,
         sort_by: Optional[str] = None,
@@ -86,35 +84,35 @@ class KoficBoxOfficeServiceProtocol(Protocol):
     ) -> Dict[str, Any]:
         ...
 
-    def search_kofic_box_office(
+    def search_arko_events(
         self,
         query: str,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
-        limit: int = DEFAULT_SEARCH_LIMIT,
+        limit: int = DEFAULT_ARKO_EVENT_SEARCH_LIMIT,
     ) -> Dict[str, Any]:
         ...
 
-    def list_kofic_box_office_titles(
+    def list_arko_event_titles(
         self,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
-        limit: int = DEFAULT_TITLE_LIST_LIMIT,
+        limit: int = DEFAULT_ARKO_EVENT_LIST_LIMIT,
     ) -> Dict[str, Any]:
         ...
 
 
 @dataclass(frozen=True)
-class KoficBoxOfficeService:
-    gateway: KoficBoxOfficeGateway
+class ArkoEventService:
+    gateway: ArkoEventGateway
 
-    def get_kofic_box_office(
+    def get_arko_events(
         self,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
         query: Optional[str] = None,
         creator: Optional[str] = None,
-        collection_db: Optional[str] = None,
+        spatial: Optional[str] = None,
         subject_keyword: Optional[str] = None,
         limit: Optional[int] = None,
         sort_by: Optional[str] = None,
@@ -123,10 +121,10 @@ class KoficBoxOfficeService:
         validate_positive_int("page_no", page_no)
         validate_positive_int("num_of_rows", num_of_rows)
 
-        options = BoxOfficeQueryOptions.from_inputs(
+        options = ArkoEventQueryOptions.from_inputs(
             query=query,
             creator=creator,
-            collection_db=collection_db,
+            spatial=spatial,
             subject_keyword=subject_keyword,
             limit=limit,
             sort_by=sort_by,
@@ -134,7 +132,7 @@ class KoficBoxOfficeService:
         )
 
         response = self.gateway.request(
-            BOX_OFFICE_ENDPOINT,
+            ARKO_EVENT_ENDPOINT,
             {
                 "pageNo": page_no,
                 "numOfRows": num_of_rows,
@@ -142,15 +140,15 @@ class KoficBoxOfficeService:
         )
         return self._shape_result(response, options)
 
-    def search_kofic_box_office(
+    def search_arko_events(
         self,
         query: str,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
-        limit: int = DEFAULT_SEARCH_LIMIT,
+        limit: int = DEFAULT_ARKO_EVENT_SEARCH_LIMIT,
     ) -> Dict[str, Any]:
         search_query = require_text("query", query)
-        result = self.get_kofic_box_office(
+        result = self.get_arko_events(
             page_no=page_no,
             num_of_rows=num_of_rows,
             query=search_query,
@@ -158,29 +156,29 @@ class KoficBoxOfficeService:
         )
         return self._build_summary_view(
             result,
-            tool_name="search_kofic_box_office",
+            tool_name="search_arko_events",
             query=search_query,
-            match_fields=BOX_OFFICE_SEARCH_FIELDS,
+            match_fields=ARKO_EVENT_SEARCH_FIELDS,
         )
 
-    def list_kofic_box_office_titles(
+    def list_arko_event_titles(
         self,
         page_no: int = DEFAULT_PAGE_NO,
         num_of_rows: int = DEFAULT_NUM_OF_ROWS,
-        limit: int = DEFAULT_TITLE_LIST_LIMIT,
+        limit: int = DEFAULT_ARKO_EVENT_LIST_LIMIT,
     ) -> Dict[str, Any]:
-        result = self.get_kofic_box_office(
+        result = self.get_arko_events(
             page_no=page_no,
             num_of_rows=num_of_rows,
             limit=limit,
         )
         return self._build_summary_view(
             result,
-            tool_name="list_kofic_box_office_titles",
-            summary_fields=BOX_OFFICE_SUMMARY_FIELDS,
+            tool_name="list_arko_event_titles",
+            summary_fields=ARKO_EVENT_SUMMARY_FIELDS,
         )
 
-    def _shape_result(self, response: Mapping[str, Any], options: BoxOfficeQueryOptions) -> Dict[str, Any]:
+    def _shape_result(self, response: Mapping[str, Any], options: ArkoEventQueryOptions) -> Dict[str, Any]:
         result = dict(response)
         source_items = self._coerce_items(result.get("items"))
         filtered_items = self._filter_items(source_items, options)
@@ -238,14 +236,14 @@ class KoficBoxOfficeService:
             summary["summary_fields"] = list(summary_fields)
         return summary
 
-    def _filter_items(self, items: list[Dict[str, Any]], options: BoxOfficeQueryOptions) -> list[Dict[str, Any]]:
+    def _filter_items(self, items: list[Dict[str, Any]], options: ArkoEventQueryOptions) -> list[Dict[str, Any]]:
         filtered_items = []
         for item in items:
-            if options.query and not self._matches_any_field(item, BOX_OFFICE_SEARCH_FIELDS, options.query):
+            if options.query and not self._matches_any_field(item, ARKO_EVENT_SEARCH_FIELDS, options.query):
                 continue
             if options.creator and not self._matches_text(item.get("creator"), options.creator):
                 continue
-            if options.collection_db and not self._matches_text(item.get("collectionDb"), options.collection_db):
+            if options.spatial and not self._matches_text(item.get("spatial"), options.spatial):
                 continue
             if options.subject_keyword and not self._matches_text(item.get("subjectKeyword"), options.subject_keyword):
                 continue
@@ -269,14 +267,14 @@ class KoficBoxOfficeService:
         )
         return populated_items + empty_items
 
-    def _build_filter_summary(self, options: BoxOfficeQueryOptions) -> Dict[str, Any]:
+    def _build_filter_summary(self, options: ArkoEventQueryOptions) -> Dict[str, Any]:
         filters: Dict[str, Any] = {}
         if options.query is not None:
             filters["query"] = options.query
         if options.creator is not None:
             filters["creator"] = options.creator
-        if options.collection_db is not None:
-            filters["collection_db"] = options.collection_db
+        if options.spatial is not None:
+            filters["spatial"] = options.spatial
         if options.subject_keyword is not None:
             filters["subject_keyword"] = options.subject_keyword
         return filters
@@ -290,7 +288,7 @@ class KoficBoxOfficeService:
     def _summarize_item(self, item: Mapping[str, Any]) -> Dict[str, Any]:
         return {
             field_name: item.get(field_name)
-            for field_name in BOX_OFFICE_SUMMARY_FIELDS
+            for field_name in ARKO_EVENT_SUMMARY_FIELDS
             if item.get(field_name) not in (None, "", [], {})
         }
 
