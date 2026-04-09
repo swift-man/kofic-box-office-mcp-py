@@ -6,8 +6,10 @@ from mcp.server.fastmcp import FastMCP
 
 from .arko_event_reference import build_arko_event_reference_payload
 from .arko_event_service import ArkoEventServiceProtocol
-from .bootstrap import create_arko_event_service, create_kofic_box_office_service
+from .bootstrap import create_arko_event_service, create_kofic_box_office_service, create_mcst_performance_service
 from .exceptions import CultureOpenApiError
+from .mcst_performance_reference import build_mcst_performance_reference_payload
+from .mcst_performance_service import McstPerformanceServiceProtocol
 from .reference import build_reference_payload
 from .runtime import RuntimeConfig, apply_runtime_config
 from .service import KoficBoxOfficeServiceProtocol
@@ -25,6 +27,11 @@ def get_arko_event_service() -> ArkoEventServiceProtocol:
     return create_arko_event_service()
 
 
+@lru_cache(maxsize=1)
+def get_mcst_performance_service() -> McstPerformanceServiceProtocol:
+    return create_mcst_performance_service()
+
+
 @mcp.resource("kofic-box-office://reference")
 def reference() -> dict:
     """Reference data for the supported KOFIC box-office dataset."""
@@ -35,6 +42,12 @@ def reference() -> dict:
 def arko_event_reference() -> dict:
     """Reference data for the supported ARKO event dataset."""
     return build_arko_event_reference_payload()
+
+
+@mcp.resource("mcst-performances://reference")
+def mcst_performance_reference() -> dict:
+    """Reference data for the supported MCST performance dataset."""
+    return build_mcst_performance_reference_payload()
 
 
 @mcp.tool()
@@ -125,6 +138,68 @@ def search_arko_events(query: str, page_no: int = 1, num_of_rows: int = 10, limi
 def list_arko_event_titles(page_no: int = 1, num_of_rows: int = 10, limit: int = 10) -> dict:
     """Return a compact list of titles from a fetched ARKO event page."""
     return get_arko_event_service().list_arko_event_titles(
+        page_no=page_no,
+        num_of_rows=num_of_rows,
+        limit=limit,
+    )
+
+
+@mcp.tool()
+def get_mcst_performances(
+    dtype: str,
+    title: str,
+    page_no: int = 1,
+    num_of_rows: int = 10,
+    event_site: str | None = None,
+    period: str | None = None,
+    limit: int | None = None,
+    sort_by: str | None = None,
+    sort_order: str | None = None,
+) -> dict:
+    """Fetch MCST culture-art performances and optionally apply local filtering and sorting."""
+    return get_mcst_performance_service().get_mcst_performances(
+        dtype=dtype,
+        title=title,
+        page_no=page_no,
+        num_of_rows=num_of_rows,
+        event_site=event_site,
+        period=period,
+        limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+
+@mcp.tool()
+def search_mcst_performances(
+    dtype: str,
+    title: str,
+    page_no: int = 1,
+    num_of_rows: int = 10,
+    limit: int = 5,
+) -> dict:
+    """Search MCST culture-art performances and return compact summaries."""
+    return get_mcst_performance_service().search_mcst_performances(
+        dtype=dtype,
+        title=title,
+        page_no=page_no,
+        num_of_rows=num_of_rows,
+        limit=limit,
+    )
+
+
+@mcp.tool()
+def list_mcst_performance_titles(
+    dtype: str,
+    title: str,
+    page_no: int = 1,
+    num_of_rows: int = 10,
+    limit: int = 10,
+) -> dict:
+    """Return a compact list of titles from a fetched MCST performance result page."""
+    return get_mcst_performance_service().list_mcst_performance_titles(
+        dtype=dtype,
+        title=title,
         page_no=page_no,
         num_of_rows=num_of_rows,
         limit=limit,

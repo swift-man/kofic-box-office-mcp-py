@@ -5,12 +5,14 @@
 - 대상 문서:
   - `영화진흥위원회_박스오피스`: <https://www.culture.go.kr/data/openapi/openapiView.do?id=203>
   - `한국문화예술위원회_행사정보`: <https://www.culture.go.kr/data/openapi/openapiView.do?id=72&category=C&orderBy=rdfCnt&gubun=A>
+  - `문화체육관광부_문화예술공연(통합)`: <https://www.culture.go.kr/data/openapi/openapiView.do?id=580&category=A&orderBy=rdfCnt&gubun=A>
 - 대상 엔드포인트:
   - `https://api.kcisa.kr/openapi/service/rest/meta5/getKFCC0502`
   - `https://api.kcisa.kr/openapi/service/rest/meta/ARKeven`
+  - `https://api.kcisa.kr/openapi/CNV_060/request`
 - 전송 방식: Streamable HTTP MCP only
 
-이 서버는 문화포털 OpenAPI를 LLM과 MCP 클라이언트가 바로 사용할 수 있도록 안정적인 JSON 응답 구조로 감싸 줍니다. 저장소 이름은 KOFIC 기준으로 시작했지만, 현재는 KOFIC 박스오피스와 ARKO 행사정보를 함께 제공합니다.
+이 서버는 문화포털 OpenAPI를 LLM과 MCP 클라이언트가 바로 사용할 수 있도록 안정적인 JSON 응답 구조로 감싸 줍니다. 저장소 이름은 KOFIC 기준으로 시작했지만, 현재는 KOFIC 박스오피스, ARKO 행사정보, MCST 문화예술공연(통합)을 함께 제공합니다.
 
 ## 제공 기능
 
@@ -20,8 +22,12 @@
 - MCP 도구 `get_arko_events`
 - MCP 도구 `search_arko_events`
 - MCP 도구 `list_arko_event_titles`
+- MCP 도구 `get_mcst_performances`
+- MCP 도구 `search_mcst_performances`
+- MCP 도구 `list_mcst_performance_titles`
 - MCP 리소스 `kofic-box-office://reference`
 - MCP 리소스 `arko-events://reference`
+- MCP 리소스 `mcst-performances://reference`
 - 문화포털 API의 JSON 응답 우선 처리
 - JSON 미지원 또는 예외 상황 대비 XML fallback 파싱
 - 원본 응답 payload 보존
@@ -53,13 +59,12 @@ SOLID 관점에서 책임을 아래처럼 분리했습니다.
 
 필수:
 
-- `CULTURE_OPEN_API_SERVICE_KEY`: 디코딩된 원본 서비스키
-- 또는 `CULTURE_OPEN_API_SERVICE_KEY_ENCODED`: 이미 URL 인코딩된 서비스키
-
-하위 호환:
-
 - `KOFIC_BOX_OFFICE_SERVICE_KEY`
 - `KOFIC_BOX_OFFICE_SERVICE_KEY_ENCODED`
+- `ARKO_EVENT_SERVICE_KEY`
+- `ARKO_EVENT_SERVICE_KEY_ENCODED`
+- `MCST_PERFORMANCE_SERVICE_KEY`
+- `MCST_PERFORMANCE_SERVICE_KEY_ENCODED`
 
 선택:
 
@@ -67,6 +72,8 @@ SOLID 관점에서 책임을 아래처럼 분리했습니다.
 - `KOFIC_BOX_OFFICE_TIMEOUT_SECONDS`: 기본값 `15`
 - `ARKO_EVENT_API_BASE`: 기본값 `https://api.kcisa.kr/openapi/service/rest/meta`
 - `ARKO_EVENT_TIMEOUT_SECONDS`: 기본값 `15`
+- `MCST_PERFORMANCE_API_BASE`: 기본값 `https://api.kcisa.kr/openapi/CNV_060`
+- `MCST_PERFORMANCE_TIMEOUT_SECONDS`: 기본값 `15`
 - `KOFIC_BOX_OFFICE_MCP_HOST`: 기본값 `127.0.0.1`
 - `KOFIC_BOX_OFFICE_MCP_PORT`: 기본값 `8000`
 - `KOFIC_BOX_OFFICE_MCP_PATH`: 기본값 `/mcp`
@@ -76,7 +83,9 @@ SOLID 관점에서 책임을 아래처럼 분리했습니다.
 예시:
 
 ```bash
-export CULTURE_OPEN_API_SERVICE_KEY='your-decoded-service-key'
+export KOFIC_BOX_OFFICE_SERVICE_KEY='your-kofic-service-key'
+export ARKO_EVENT_SERVICE_KEY='your-arko-service-key'
+export MCST_PERFORMANCE_SERVICE_KEY='your-mcst-performance-service-key'
 ```
 
 ## 설치
@@ -287,6 +296,74 @@ journalctl -u kofic-box-office-mcp -n 50 --no-pager
 응답:
 
 - `items`: 행사 제목 중심의 요약 목록
+- `summary_fields`: 요약에 포함되는 필드 목록
+- `returned_count`: 반환 건수
+
+### `get_mcst_performances`
+
+문화체육관광부 `문화예술공연(통합)` 데이터를 조회합니다.
+
+입력:
+
+- `dtype`: `연극`, `뮤지컬`, `오페라`, `음악`, `콘서트`, `국악`, `무용`, `전시`, `기타` 중 하나
+- `title`: 제목 검색어, 2자 이상
+- `page_no`: 페이지 번호, 기본값 `1`
+- `num_of_rows`: 페이지당 건수, 기본값 `10`
+- `event_site`: `eventSite` 필드 부분 일치 필터
+- `period`: `period` 필드 부분 일치 필터
+- `limit`: 필터링 후 반환할 최대 건수
+- `sort_by`: `title`, `type`, `period`, `eventPeriod`, `eventSite`, `charge`, `viewCount` 중 정렬 필드
+- `sort_order`: `asc` 또는 `desc`
+
+응답:
+
+- `items`: LLM이 바로 쓰기 쉬운 정규화된 공연 항목 목록
+- `response_header`: 원본 API `header`
+- `response_body`: 원본 API `body`를 유지하면서 `items`만 리스트로 정규화한 값
+- `api_payload`: 원본 전체 payload
+- `source_item_count`: 원본 페이지에서 받은 항목 수
+- `returned_count`: 로컬 필터링/정렬/제한 이후 반환된 항목 수
+- `applied_filters`: MCP 서버에서 적용한 로컬 필터 정보
+- `applied_sort`: MCP 서버에서 적용한 로컬 정렬 정보
+
+주의:
+
+- `dtype`와 `title`은 상위 문화포털 API로 전달되는 필수 조회 조건입니다.
+- `event_site`, `period`, `limit`, `sort_by`, `sort_order`는 MCP 서버가 응답 페이지에 대해 로컬로 적용하는 옵션입니다.
+
+### `search_mcst_performances`
+
+문화예술공연(통합) 검색 결과를 요약 필드 중심으로 반환합니다.
+
+입력:
+
+- `dtype`: 분류명
+- `title`: 제목 검색어, 2자 이상
+- `page_no`: 페이지 번호, 기본값 `1`
+- `num_of_rows`: 페이지당 건수, 기본값 `10`
+- `limit`: 반환할 최대 건수, 기본값 `5`
+
+응답:
+
+- `items`: `title`, `type`, `period`, `eventPeriod`, `eventSite`, `charge`, `url`, `imageObject`, `viewCount` 중심 요약 목록
+- `match_fields`: 요약 검색 뷰에서 참고할 필드 목록
+- `returned_count`: 검색 결과 건수
+
+### `list_mcst_performance_titles`
+
+문화예술공연(통합) 검색 결과를 간단한 제목 목록 뷰로 반환합니다.
+
+입력:
+
+- `dtype`: 분류명
+- `title`: 제목 검색어, 2자 이상
+- `page_no`: 페이지 번호, 기본값 `1`
+- `num_of_rows`: 페이지당 건수, 기본값 `10`
+- `limit`: 반환할 최대 건수, 기본값 `10`
+
+응답:
+
+- `items`: 제목 중심의 요약 목록
 - `summary_fields`: 요약에 포함되는 필드 목록
 - `returned_count`: 반환 건수
 

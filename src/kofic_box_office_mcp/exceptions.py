@@ -8,3 +8,7 @@ class KoficBoxOfficeError(CultureOpenApiError):
 
 class ArkoEventError(CultureOpenApiError):
     """Raised when the ARKO event API or local validation fails."""
+
+
+class McstPerformanceError(CultureOpenApiError):
+    """Raised when the MCST culture-art performance API or local validation fails."""
