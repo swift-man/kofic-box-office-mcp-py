@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kofic-box-office-mcp"
+version = "0.1.0"
+description = "MCP server for the KOFIC box-office OpenAPI"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp[cli]>=1,<2",
+]
+
+[project.scripts]
+kofic-box-office-mcp = "kofic_box_office_mcp.server:main"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
