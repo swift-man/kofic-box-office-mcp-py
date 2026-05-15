@@ -1,0 +1,62 @@
+version: 1
+
+review:
+  include:
+    - "src/**/*.py"
+    - "tests/**/*.py"
+    - "scripts/**/*.sh"
+    - "deploy/**/*.service"
+    - "deploy/**/*.service.example"
+    - "pyproject.toml"
+    - "README.md"
+    - ".env.example"
+    - "AGENTS.md"
+
+  exclude:
+    # dependency / virtual environments
+    - ".venv/**"
+    - "venv/**"
+    - "node_modules/**"
+    - "vendor/**"
+
+    # Python cache / local tooling output
+    - "**/__pycache__/**"
+    - "**/*.pyc"
+    - "**/*.pyo"
+    - "**/*.pyd"
+    - "**/*.egg-info/**"
+    - ".mypy_cache/**"
+    - ".pytest_cache/**"
+    - ".ruff_cache/**"
+    - ".tox/**"
+    - ".nox/**"
+
+    # build / coverage output
+    - "build/**"
+    - "dist/**"
+    - "htmlcov/**"
+    - ".coverage"
+    - ".coverage.*"
+
+    # generated artifacts / binaries
+    - "**/*.log"
+    - "**/*.png"
+    - "**/*.jpg"
+    - "**/*.jpeg"
+    - "**/*.gif"
+    - "**/*.webp"
+    - "**/*.pdf"
+
+    # lock files
+    - "package-lock.json"
+    - "yarn.lock"
+    - "pnpm-lock.yaml"
+
+  always_review:
+    - ".reviewbot.yml"
+    - "AGENTS.md"
+    - "README.md"
+    - "pyproject.toml"
+    - ".env.example"
+    - "scripts/run_http.sh"
+    - "deploy/systemd/kofic-box-office-mcp.service.example"
